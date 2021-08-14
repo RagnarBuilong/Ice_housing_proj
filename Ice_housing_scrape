@@ -1,0 +1,93 @@
+# -*- coding: utf-8 -*-
+"""
+Spyder Editor
+
+This is a temporary script file.
+"""
+
+import selenium
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException 
+import pandas as pd       
+
+import time
+
+PATH = "C:\Program Files (x86)\chromedriver.exe"
+driver = webdriver.Chrome(PATH)
+
+
+
+driver.get("http://fasteignir.visir.is/search/results/?stype=sale#/?zip=101,102,103,104,105,107,108,109,110,111,112,113,116,162&stype=sale&category=2,1,4,17")
+accept_cookies = driver.find_element_by_id("cookiePolicy__accept")
+accept_cookies.send_keys(Keys.RETURN)
+print(driver.title)
+time.sleep(1)
+tracker = 0
+property_list = []
+try:
+    main = WebDriverWait(driver, 5).until(
+        EC.presence_of_element_located((By.ID, "native-result-div"))
+        )
+    time.sleep(2)
+    print("Found Main")
+    num_pages = driver.find_element_by_xpath('/html/body/div[5]/div/div/div[1]/div[2]/div[2]/div[4]/p[2]/a[10]').text
+    tracker_total = driver.find_element_by_id('tracker-total').text
+    j= 1   
+    while j <= int(num_pages):
+        properties = driver.find_elements_by_class_name('property')
+        i = 1
+        while i <= len(properties):
+            try:
+                #print(i)
+                time.sleep(0.5)
+                element = driver.find_element_by_xpath('//*[@id="native-result-div"]/div['+str(i)+']/div/div[3]/div[3]/h2/a').click()
+                title = driver.find_element_by_class_name('street').text
+                address = driver.find_elements_by_class_name('address')[1].text
+                price = driver.find_element_by_class_name('price').text
+                features = driver.find_element_by_class_name('features').text
+                size = (features.split('\n')[0]).split(' ')[0]
+                date = (features.split('\n')[1]).split(' ')[1]
+                rooms = (features.split('\n')[2]).split(' ')[0]
+                description_full = driver.find_element_by_class_name('col-description').text
+                kind = description_full.split(',')[2]
+                #rooms = (description_full.split('\n')[0]).split(',')[3]
+                property_item ={
+                    'title': title,
+                    'address': address,
+                    'price': price,
+                    'size m^2': size,
+                    'kind': kind,
+                    'date': date,
+                    'rooms': rooms,
+                    'description': description_full
+                    }
+                property_list.append(property_item)
+                time.sleep(0.5)
+                driver.back()
+                i = i+1
+                tracker = tracker+1
+                print(str(tracker)+'/'+tracker_total)
+            except NoSuchElementException:
+                i = i+1
+        try:
+            element = WebDriverWait(driver, 5).until(
+                EC.presence_of_element_located((By.ID, "tracker-action-pagenp-bottom"))
+                )
+            time.sleep(5)
+            element = element.find_element_by_xpath('//*[@id="tracker-action-pagenp-bottom"]/a[2]').click()
+        except NoSuchElementException:
+            element = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.ID, "tracker-action-pagenp-bottom"))
+                )
+            time.sleep(5)
+            element = element.find_element_by_xpath('//*[@id="tracker-action-pagenp-bottom"]/a').click()
+        j = j+1
+finally:
+    driver.quit()
+    df = pd.DataFrame(property_list)
+    print(df)
+
